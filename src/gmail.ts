@@ -1,31 +1,20 @@
 /**
  * gmail.ts — thin, extraction-friendly wrapper over the Gmail API.
  *
- * Everything here is read-only. Bodies are decoded to plain text so the MCP
- * client's model can extract structured data without dealing with MIME.
+ * Everything here is read-only. Parsing lives in parse.ts so it can be tested
+ * without network or OAuth.
  */
 import { google, gmail_v1 } from "googleapis";
 import { authorize } from "./auth.js";
+import {
+  EmailSummary,
+  EmailFull,
+  LabelInfo,
+  toSummary,
+  toFull,
+} from "./parse.js";
 
-export interface EmailSummary {
-  id: string;
-  threadId: string;
-  from: string;
-  subject: string;
-  date: string;
-  snippet: string;
-}
-
-export interface EmailFull extends EmailSummary {
-  to: string;
-  labels: string[];
-  body: string;
-}
-
-export interface LabelInfo {
-  id: string;
-  name: string;
-}
+export type { EmailSummary, EmailFull, LabelInfo } from "./parse.js";
 
 let cached: gmail_v1.Gmail | null = null;
 
@@ -84,71 +73,4 @@ export async function listLabels(): Promise<LabelInfo[]> {
     id: l.id ?? "",
     name: l.name ?? "",
   }));
-}
-
-/* ------------------------------------------------------------------ */
-/* Parsing helpers                                                     */
-/* ------------------------------------------------------------------ */
-
-function getHeader(
-  headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
-  name: string
-): string {
-  const h = (headers ?? []).find(
-    (x) => (x.name ?? "").toLowerCase() === name.toLowerCase()
-  );
-  return h?.value ?? "";
-}
-
-function toSummary(msg: gmail_v1.Schema$Message): EmailSummary {
-  const headers = msg.payload?.headers;
-  return {
-    id: msg.id ?? "",
-    threadId: msg.threadId ?? "",
-    from: getHeader(headers, "From"),
-    subject: getHeader(headers, "Subject"),
-    date: getHeader(headers, "Date"),
-    snippet: msg.snippet ?? "",
-  };
-}
-
-function toFull(msg: gmail_v1.Schema$Message): EmailFull {
-  const headers = msg.payload?.headers;
-  return {
-    ...toSummary(msg),
-    to: getHeader(headers, "To"),
-    labels: msg.labelIds ?? [],
-    body: extractPlainBody(msg.payload),
-  };
-}
-
-function decode(data?: string | null): string {
-  return data ? Buffer.from(data, "base64url").toString("utf8") : "";
-}
-
-/**
- * Walks the MIME tree and returns the first text/plain body found. Falls back
- * to any text/* part if no text/plain exists.
- */
-function extractPlainBody(
-  payload: gmail_v1.Schema$MessagePart | undefined
-): string {
-  if (!payload) return "";
-
-  if (payload.mimeType === "text/plain" && payload.body?.data) {
-    return decode(payload.body.data);
-  }
-
-  if (payload.parts) {
-    for (const part of payload.parts) {
-      const text = extractPlainBody(part);
-      if (text) return text;
-    }
-  }
-
-  if (payload.mimeType?.startsWith("text/") && payload.body?.data) {
-    return decode(payload.body.data);
-  }
-
-  return "";
 }

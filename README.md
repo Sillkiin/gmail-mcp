@@ -1,5 +1,9 @@
 # gmail-mcp
 
+[![CI](https://github.com/Sillkiin/gmail-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Sillkiin/gmail-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![MCP](https://img.shields.io/badge/Model_Context_Protocol-server-7c3aed)](https://modelcontextprotocol.io)
+
 **Turn your Gmail into structured data, from inside Claude or Cursor.**
 
 `gmail-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server that
@@ -45,6 +49,16 @@ modify anything.
 ## Quick start
 
 ### 1. Install & build
+
+**Option A — zero clone (run straight from GitHub):**
+```bash
+npx github:Sillkiin/gmail-mcp
+```
+`npx` fetches the repo, builds it (via the `prepare` script), and runs the server. You
+still do the one-time OAuth steps below; point your client `command`/`args` at the same
+`npx` invocation.
+
+**Option B — clone (recommended while developing):**
 ```bash
 git clone https://github.com/Sillkiin/gmail-mcp.git
 cd gmail-mcp
@@ -140,6 +154,18 @@ MCP client (Claude / Cursor)
 
 The server is intentionally thin: it provides clean access, and the client's model supplies
 the intelligence (extraction, summarization, table-building).
+
+## Development
+
+```bash
+npm install      # install + build
+npm run build    # recompile
+npm test         # build + run unit tests (no Gmail/OAuth needed)
+```
+
+The MIME/header parsing lives in `src/parse.ts` and is covered by fixture-based tests in
+`test/` — they run in CI on every push. Recording a demo GIF? See
+[`docs/DEMO.md`](docs/DEMO.md).
 
 ## License
 
