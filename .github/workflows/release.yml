@@ -11,6 +11,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,7 +21,14 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
       - run: npm ci
-      # prepublishOnly runs build + tests before publishing.
-      - run: npm publish --provenance --access public
+      - run: npm run build && npm test
+      # Publish only when an NPM_TOKEN secret is configured; otherwise skip
+      # cleanly so tagging a release never fails before you've set the token.
+      - name: Publish to npm
+        if: ${{ env.NPM_TOKEN != '' }}
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Skipped publish (no NPM_TOKEN)
+        if: ${{ env.NPM_TOKEN == '' }}
+        run: echo "NPM_TOKEN not set — skipping npm publish. See docs/PUBLISHING.md."
