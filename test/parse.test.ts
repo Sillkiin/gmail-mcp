@@ -9,6 +9,7 @@ import {
   getHeader,
   decode,
   extractPlainBody,
+  extractAttachments,
   toSummary,
   toFull,
 } from "../src/parse.js";
@@ -105,4 +106,34 @@ test("toSummary tolerates a near-empty message", () => {
   assert.equal(s.id, "x");
   assert.equal(s.from, "");
   assert.equal(s.snippet, "");
+});
+
+test("extractAttachments finds attachments nested in the MIME tree", () => {
+  const withAttachment: gmail_v1.Schema$Message = {
+    id: "msg_2",
+    payload: {
+      mimeType: "multipart/mixed",
+      parts: [
+        { mimeType: "text/plain", body: { data: b64url("see attached") } },
+        {
+          mimeType: "application/pdf",
+          filename: "invoice.pdf",
+          body: { attachmentId: "att_123", size: 24680 },
+        },
+      ],
+    },
+  };
+  const atts = extractAttachments(withAttachment.payload);
+  assert.equal(atts.length, 1);
+  assert.deepEqual(atts[0], {
+    attachmentId: "att_123",
+    filename: "invoice.pdf",
+    mimeType: "application/pdf",
+    size: 24680,
+  });
+});
+
+test("extractAttachments returns [] when there are none", () => {
+  assert.deepEqual(extractAttachments(multipartMessage.payload), []);
+  assert.deepEqual(extractAttachments(undefined), []);
 });

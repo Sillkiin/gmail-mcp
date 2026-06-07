@@ -10,11 +10,31 @@ import {
   EmailSummary,
   EmailFull,
   LabelInfo,
+  AttachmentInfo,
   toSummary,
   toFull,
+  extractAttachments,
 } from "./parse.js";
 
-export type { EmailSummary, EmailFull, LabelInfo } from "./parse.js";
+export type {
+  EmailSummary,
+  EmailFull,
+  LabelInfo,
+  AttachmentInfo,
+} from "./parse.js";
+
+export interface ThreadResult {
+  id: string;
+  messages: EmailFull[];
+}
+
+export interface AttachmentData {
+  filename: string;
+  mimeType: string;
+  size: number;
+  /** Base64URL-encoded bytes, as returned by the Gmail API. */
+  data: string;
+}
 
 let cached: gmail_v1.Gmail | null = null;
 
@@ -73,4 +93,54 @@ export async function listLabels(): Promise<LabelInfo[]> {
     id: l.id ?? "",
     name: l.name ?? "",
   }));
+}
+
+/** Reads an entire thread (all messages, in order) in full. */
+export async function getThread(threadId: string): Promise<ThreadResult> {
+  const gmail = gmailClient();
+  const res = await gmail.users.threads.get({
+    userId: "me",
+    id: threadId,
+    format: "full",
+  });
+  return {
+    id: res.data.id ?? threadId,
+    messages: (res.data.messages ?? []).map(toFull),
+  };
+}
+
+/** Lists attachment metadata for a message (no bytes downloaded). */
+export async function listAttachments(
+  messageId: string
+): Promise<AttachmentInfo[]> {
+  const gmail = gmailClient();
+  const msg = await gmail.users.messages.get({
+    userId: "me",
+    id: messageId,
+    format: "full",
+  });
+  return extractAttachments(msg.data.payload);
+}
+
+/** Downloads one attachment's bytes (Base64URL) by message + attachment id. */
+export async function getAttachment(
+  messageId: string,
+  attachmentId: string
+): Promise<AttachmentData> {
+  const gmail = gmailClient();
+  // Look up filename/mimeType from the message so the result is self-describing.
+  const meta = (await listAttachments(messageId)).find(
+    (a) => a.attachmentId === attachmentId
+  );
+  const res = await gmail.users.messages.attachments.get({
+    userId: "me",
+    messageId,
+    id: attachmentId,
+  });
+  return {
+    filename: meta?.filename ?? "",
+    mimeType: meta?.mimeType ?? "",
+    size: res.data.size ?? meta?.size ?? 0,
+    data: res.data.data ?? "",
+  };
 }

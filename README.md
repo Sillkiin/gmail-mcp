@@ -41,6 +41,9 @@ no brittle regex, no separate pipeline.
 | `search_emails` | Search with Gmail query syntax (`from:`, `subject:`, `newer_than:`, `label:`…). Returns lightweight summaries. |
 | `read_email` | Read one message in full, with decoded plain-text body and labels. |
 | `read_emails_batch` | Read up to 50 messages at once — the workhorse for extracting a set into a table. |
+| `get_thread` | Read an entire thread (all messages, in order) when context spans a back-and-forth. |
+| `list_attachments` | List attachment metadata (filename, type, size, id) for a message — no bytes downloaded. |
+| `get_attachment` | Download one attachment's bytes (Base64URL) by message + attachment id. |
 | `list_labels` | List labels, to scope searches. |
 
 All tools are **read-only** (`gmail.readonly` scope). This server cannot send, delete, or
@@ -134,11 +137,12 @@ The model calls `search_emails` → `read_emails_batch` and does the extraction 
 
 ## Roadmap
 
-- [ ] Attachment listing & download tool
-- [ ] Thread-level read (`get_thread`)
-- [ ] `npx gmail-mcp` zero-clone install
+- [x] Attachment listing & download tool
+- [x] Thread-level read (`get_thread`)
+- [x] Zero-clone install (`npx github:Sillkiin/gmail-mcp`)
+- [x] Tests against a recorded Gmail fixture
+- [ ] Publish to npm for `npx gmail-mcp`
 - [ ] Optional date/sender filters as first-class tool params
-- [ ] Tests against a recorded Gmail fixture
 
 Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

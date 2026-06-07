@@ -25,6 +25,13 @@ export interface LabelInfo {
   name: string;
 }
 
+export interface AttachmentInfo {
+  attachmentId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+}
+
 /** Case-insensitive header lookup. Returns "" if absent. */
 export function getHeader(
   headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
@@ -88,4 +95,30 @@ export function toFull(msg: gmail_v1.Schema$Message): EmailFull {
     labels: msg.labelIds ?? [],
     body: extractPlainBody(msg.payload),
   };
+}
+
+/**
+ * Walks the MIME tree and collects attachment metadata (anything with a
+ * filename and an attachmentId). Returns [] when there are no attachments.
+ */
+export function extractAttachments(
+  payload: gmail_v1.Schema$MessagePart | undefined
+): AttachmentInfo[] {
+  const out: AttachmentInfo[] = [];
+  const walk = (part?: gmail_v1.Schema$MessagePart): void => {
+    if (!part) return;
+    const filename = part.filename ?? "";
+    const attachmentId = part.body?.attachmentId ?? "";
+    if (filename && attachmentId) {
+      out.push({
+        attachmentId,
+        filename,
+        mimeType: part.mimeType ?? "",
+        size: part.body?.size ?? 0,
+      });
+    }
+    (part.parts ?? []).forEach(walk);
+  };
+  walk(payload);
+  return out;
 }

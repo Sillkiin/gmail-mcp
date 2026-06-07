@@ -14,6 +14,9 @@ import {
   readEmail,
   readEmailsBatch,
   listLabels,
+  getThread,
+  listAttachments,
+  getAttachment,
 } from "./gmail.js";
 
 const server = new McpServer({
@@ -106,6 +109,57 @@ server.tool(
       return jsonResult(await listLabels());
     } catch (e) {
       return errorResult(`list_labels failed: ${(e as Error).message}`);
+    }
+  }
+);
+
+server.tool(
+  "get_thread",
+  "Read an entire email thread (all messages, in order) in full. Use this when " +
+    "context is spread across a back-and-forth conversation.",
+  {
+    thread_id: z.string().describe("The thread id (from search_emails / read_email)."),
+  },
+  async ({ thread_id }) => {
+    try {
+      return jsonResult(await getThread(thread_id));
+    } catch (e) {
+      return errorResult(`get_thread failed: ${(e as Error).message}`);
+    }
+  }
+);
+
+server.tool(
+  "list_attachments",
+  "List attachment metadata (filename, type, size, attachment id) for a message, " +
+    "without downloading any bytes. Use before get_attachment to see what's there.",
+  {
+    message_id: z.string().describe("The message id (from search_emails)."),
+  },
+  async ({ message_id }) => {
+    try {
+      return jsonResult(await listAttachments(message_id));
+    } catch (e) {
+      return errorResult(`list_attachments failed: ${(e as Error).message}`);
+    }
+  }
+);
+
+server.tool(
+  "get_attachment",
+  "Download one attachment's bytes (Base64URL-encoded) by message id and " +
+    "attachment id. Use list_attachments first to find the attachment id.",
+  {
+    message_id: z.string().describe("The message id."),
+    attachment_id: z
+      .string()
+      .describe("The attachment id (from list_attachments)."),
+  },
+  async ({ message_id, attachment_id }) => {
+    try {
+      return jsonResult(await getAttachment(message_id, attachment_id));
+    } catch (e) {
+      return errorResult(`get_attachment failed: ${(e as Error).message}`);
     }
   }
 );
