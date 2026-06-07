@@ -14,9 +14,14 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/src/index.js",
+    "setup": "node dist/scripts/setup.js",
     "authorize": "node dist/scripts/authorize.js",
-    "test": "tsc && node --test dist/test/parse.test.js",
-    "prepare": "tsc"
+    "test": "tsc && node --test dist/test/parse.test.js dist/test/query.test.js",
+    "prepare": "tsc",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "mcp",

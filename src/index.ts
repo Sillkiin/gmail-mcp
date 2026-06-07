@@ -18,6 +18,7 @@ import {
   listAttachments,
   getAttachment,
 } from "./gmail.js";
+import { buildQuery } from "./query.js";
 
 const server = new McpServer({
   name: "gmail-mcp",
@@ -41,12 +42,27 @@ function errorResult(message: string) {
 
 server.tool(
   "search_emails",
-  "Search Gmail messages using Gmail's query syntax (e.g. " +
-    "'from:acme.com subject:invoice newer_than:30d'). Returns lightweight " +
-    "summaries (id, from, subject, date, snippet). Use read_emails_batch to " +
-    "pull full bodies for extraction.",
+  "Search Gmail and return lightweight summaries (id, from, subject, date, " +
+    "snippet). Pass structured filters (from, subject, after, …) and/or a raw " +
+    "`query` — they are combined. Then use read_emails_batch to pull full bodies " +
+    "for extraction.",
   {
-    query: z.string().describe("Gmail search query, same syntax as the Gmail search box."),
+    query: z
+      .string()
+      .optional()
+      .describe("Raw Gmail query (same syntax as the search box). Merged with the filters below."),
+    from: z.string().optional().describe("Sender filter, e.g. an address or domain (acme.com)."),
+    to: z.string().optional().describe("Recipient filter."),
+    subject: z.string().optional().describe("Subject contains this text."),
+    label: z.string().optional().describe("Restrict to a label, e.g. sales."),
+    newer_than: z
+      .string()
+      .optional()
+      .describe("Relative window like '30d', '6m', '1y'."),
+    after: z.string().optional().describe("On/after this date, format YYYY/MM/DD."),
+    before: z.string().optional().describe("Before this date, format YYYY/MM/DD."),
+    has_attachment: z.boolean().optional().describe("Only messages with attachments."),
+    is_unread: z.boolean().optional().describe("Only unread messages."),
     max_results: z
       .number()
       .int()
@@ -55,8 +71,14 @@ server.tool(
       .optional()
       .describe("Maximum messages to return (1-100, default 20)."),
   },
-  async ({ query, max_results }) => {
+  async ({ max_results, ...filters }) => {
     try {
+      const query = buildQuery(filters);
+      if (!query) {
+        return errorResult(
+          "Provide at least one filter (query, from, subject, label, after, …)."
+        );
+      }
       return jsonResult(await searchEmails(query, max_results ?? 20));
     } catch (e) {
       return errorResult(`search_emails failed: ${(e as Error).message}`);

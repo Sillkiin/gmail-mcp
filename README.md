@@ -78,10 +78,12 @@ npm install        # also builds via the prepare script
 
 ### 3. Authorize (one time)
 ```bash
-npm run authorize
+npm run setup
 ```
-This opens a consent URL, captures the redirect on `http://127.0.0.1:4571/oauth2callback`,
-and writes a `token.json` next to your credentials. Read-only scope only.
+`setup` checks your credentials, then opens the consent screen in your browser, captures the
+redirect on `http://127.0.0.1:4571/oauth2callback`, and writes `token.json` next to your
+credentials. Read-only scope only. (Prefer the bare flow? `npm run authorize` does just the
+OAuth step.)
 
 ### 4. Wire it into your MCP client
 
@@ -121,6 +123,11 @@ Restart the client. You should see the `gmail` server and its four tools.
 
 The model calls `search_emails` → `read_emails_batch` and does the extraction itself.
 
+`search_emails` takes structured filters so the model doesn't have to hand-write query
+syntax: `from`, `to`, `subject`, `label`, `newer_than` (`30d`/`6m`/`1y`), `after`/`before`
+(`YYYY/MM/DD`), `has_attachment`, `is_unread` — plus a raw `query` passthrough. They're all
+combined into one Gmail query.
+
 ## Configuration
 
 | Env var | Default | Purpose |
@@ -141,8 +148,10 @@ The model calls `search_emails` → `read_emails_batch` and does the extraction 
 - [x] Thread-level read (`get_thread`)
 - [x] Zero-clone install (`npx github:Sillkiin/gmail-mcp`)
 - [x] Tests against a recorded Gmail fixture
-- [ ] Publish to npm for `npx gmail-mcp`
-- [ ] Optional date/sender filters as first-class tool params
+- [x] Date/sender filters as first-class `search_emails` params
+- [x] One-command onboarding (`npm run setup`)
+- [x] npm publish prepared (release workflow + provenance) — see [docs/PUBLISHING.md](docs/PUBLISHING.md)
+- [ ] Publish the first npm release (`npm version` + push tag)
 
 Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
